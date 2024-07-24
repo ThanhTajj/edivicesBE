@@ -1,31 +1,36 @@
 const express = require("express");
 const dotenv = require('dotenv');
 const mongoose = require("mongoose");
-const routes = require('./routes')
+const routes = require('./routes');
 const cors = require('cors');
-const bodyParser = require('body-parser')
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
 
-dotenv.config()
+dotenv.config();
+mongoose.set('strictQuery', false);
+const app = express();
+const port = process.env.PORT || 3001;
 
-const app = express()
-const port = process.env.PORT || 3001
+// Cấu hình CORS
+app.use(cors());
 
-app.use(cors())
+// Cấu hình middleware của express
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb' }));
-app.use(bodyParser.json())
-app.use(cookieParser())
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
 
+// Định tuyến
 routes(app);
 
-mongoose.connect(`${process.env.MONGO_DB}`)
+// Kết nối MongoDB
+mongoose.connect(`${process.env.MONGO_DB}`, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {
-        // console.log('Connect Db success!')
+        console.log('Connect Db success!');
     })
     .catch((err) => {
-        // console.log(err)
-    })
+        console.log(err);
+    });
+
+// Khởi động server
 app.listen(port, () => {
-    // console.log('Server is running in port: ', + port)
-})
+    console.log('Server is running on port:', port);
+});
