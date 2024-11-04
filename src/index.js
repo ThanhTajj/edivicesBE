@@ -22,7 +22,7 @@ app.use(cookieParser());
 routes(app);
 
 // Kết nối MongoDB
-mongoose.connect(`${process.env.MONGO_DB}`, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(`${process.env.MongoDB}`, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {
         console.log('Connect Db success!');
     })
