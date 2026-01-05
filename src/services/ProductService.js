@@ -9,7 +9,7 @@ const createProduct = (newProduct) => {
             })            
             if(checkProduct !== null){
                 return resolve({
-                    status:'OK',
+                    status:'ERR',
                     message:'The name of product is already'
                 })
             }
@@ -43,7 +43,7 @@ const updateProduct = (id, data) => {
             })
             if(checkProduct===null){
                 return resolve({
-                    status:'OK',
+                    status:'ERR',
                     message:'The product is not defined'
                 })
             }
@@ -68,7 +68,7 @@ const getDetailsProduct = (id) => {
             })
             if(product === null){
                 return resolve({
-                    status:'OK',
+                    status:'ERR',
                     message:'The product is not defined'
                 })
             }
@@ -91,7 +91,7 @@ const deleteProduct = (id) => {
             })
             if(checkProduct===null){
                 return resolve({
-                    status:'OK',
+                    status:'ERR',
                     message:'The product is not defined'
                 })
             }

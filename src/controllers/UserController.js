@@ -32,21 +32,44 @@ const createUser = async (req, res) => {
 }
 
 const loginUser = async (req, res) => {
-    try {
-        const {email, password} = req.body
-        if(!email || !password){
-            return res.status(200).json({
-                status: 'ERR',
-                message: 'The input is required'
-            })
-        }
-        const response = await UserService.loginUser(req.body)
-        return res.status(200).json(response)
-    } catch(e) {
-        return res.status(404).json({
-            message:e
-        })
+  try {
+    const { email, password } = req.body
+
+    const reg = /^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$/
+    const isCheckEmail = reg.test(email)
+
+    if (!email || !password) {
+      return res.status(400).json({
+        status: 'ERR',
+        message: 'Email and password are required'
+      })
     }
+
+    if (!isCheckEmail) {
+      return res.status(400).json({
+        status: 'ERR',
+        message: 'Invalid email format'
+      })
+    }
+
+    const response = await UserService.loginUser(req.body)
+
+    const { refresh_token, ...newResponse } = response
+
+    res.cookie('refresh_token', refresh_token, {
+      httpOnly: true,
+      secure: true,
+    //   sameSite: 'strict'
+    })
+
+    return res.status(200).json(newResponse)
+  } catch (e) {
+    console.error('LOGIN ERROR:', e)
+    return res.status(500).json({
+      status: 'ERR',
+      message: 'Login failed'
+    })
+  }
 }
 
 const updateUser = async (req, res) => {
@@ -119,7 +142,7 @@ const getDetailsUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     try {
-        const token = req.headers.token.split(' ')[1]
+        const token = req.cookies.refresh_token
         if(!token){
             return res.status(200).json({
                 status: 'ERR',
@@ -128,6 +151,7 @@ const refreshToken = async (req, res) => {
         }
         const response = await JwtService.refreshTokenJwtService(token)
         return res.status(200).json(response)
+        return
     } catch(e) {
         return res.status(404).json({
             message:e
