@@ -59,12 +59,12 @@ const loginUser = async (req, res) => {
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
       secure: false,
-      sameSite: 'strict'
+      sameSite: 'strict',
+      path: '/'
     })
 
     return res.status(200).json(newResponse)
   } catch (e) {
-    console.error('LOGIN ERROR:', e)
     return res.status(500).json({
       status: 'ERR',
       message: 'Login failed'
@@ -141,8 +141,6 @@ const getDetailsUser = async (req, res) => {
 }
 
 const refreshToken = async (req, res) => {
-    console.log('req.cookies.refresh_token:',req.cookies.refresh_token)
-
     try {
         const token = req.cookies.refresh_token
         if(!token){
@@ -153,7 +151,20 @@ const refreshToken = async (req, res) => {
         }
         const response = await JwtService.refreshTokenJwtService(token)
         return res.status(200).json(response)
-        return
+    } catch(e) {
+        return res.status(404).json({
+            message:e
+        })
+    }
+}
+
+const logoutUser = async (req, res) => {
+    try {
+        res.clearCookie('refresh_token')
+        return res.status(200).json({
+            status: 'OK',
+            message: 'Logout successful'
+        })
     } catch(e) {
         return res.status(404).json({
             message:e
@@ -168,5 +179,6 @@ module.exports = {
     deleteUser,
     getAllUser,
     getDetailsUser,
-    refreshToken
+    refreshToken,
+    logoutUser
 }
