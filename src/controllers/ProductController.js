@@ -114,6 +114,25 @@ const getAllType = async (req, res) => {
     }
 }
 
+const rateProduct = async (req, res) => {
+    try {
+        const productId = req.params.id
+        const { rating } = req.body
+        if (!productId || !rating) {
+            return res.status(200).json({
+                status: 'ERR',
+                message: 'The input is required'
+            })
+        }
+        const response = await ProductService.updateProduct(productId, { rating })
+        return res.status(200).json(response)
+    } catch (e) {
+        return res.status(404).json({
+            message: e
+        })
+    }
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -121,5 +140,8 @@ module.exports = {
     deleteProduct,
     getAllProduct,
     deleteMany,
-    getAllType
+    getAllType,
+    rateProduct
 }
+
+

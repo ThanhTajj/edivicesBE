@@ -13,17 +13,18 @@ const sendEmailCreateOrder = async (email, orderItems) => {
       pass: process.env.MAIL_PASSWORD, // generated ethereal password
     },
   });
+  console.log('Sending email with account:', process.env.MAIL_ACCOUNT)
+  console.log('Password length:', process.env.MAIL_PASSWORD ? process.env.MAIL_PASSWORD.length : 0)
   transporter.use('compile', inlineBase64({ cidPrefix: 'somePrefix_' }));
 
   let listItem = '';
-  const attachImage = []
   orderItems.forEach((order) => {
     listItem += `<div>
     <div>
       Bạn đã đặt sản phẩm <b>${order.name}</b> với số lượng: <b>${order.amount}</b> và giá là: <b>${order.price} VND</b></div>
       <div>Bên dưới là hình ảnh của sản phẩm</div>
+      <img src="${order.image}" alt="san pham" style="width: 200px; height: auto; object-fit: cover;" />
     </div>`
-    attachImage.push({ path: order.image })
   })
 
   // send mail with defined transport object
@@ -33,7 +34,6 @@ const sendEmailCreateOrder = async (email, orderItems) => {
     subject: "Bạn đã đặt hàng tại shop hocdehocmai", // Subject line
     text: "Hello world?", // plain text body
     html: `<div><b>Bạn đã đặt hàng thành công tại shop hocdehocmai</b></div> ${listItem}`,
-    attachments: attachImage,
   });
 }
 
