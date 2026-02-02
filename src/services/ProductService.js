@@ -124,52 +124,40 @@ const getDetailsProduct = (id) => {
 }
 
 const getAllProduct = (limit, page, sort, filter) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const totalProduct = await Product.count()
-            let allProduct = []
-            if (filter) {
-                const label = filter[0];
-                const allObjectFilter = await Product.find({ [label]: { '$regex': filter[1] } }).limit(limit).skip(page * limit).sort({createdAt: -1, updatedAt: -1})
-                resolve({
-                    status: 'OK',
-                    message: 'Success',
-                    data: allObjectFilter,
-                    total: totalProduct,
-                    pageCurrent: Number(page + 1),
-                    totalPage: Math.ceil(totalProduct / limit)
-                })
-            }
-            if (sort) {
-                const objectSort = {}
-                objectSort[sort[1]] = sort[0]
-                const allProductSort = await Product.find().limit(limit).skip(page * limit).sort(objectSort).sort({createdAt: -1, updatedAt: -1})
-                resolve({
-                    status: 'OK',
-                    message: 'Success',
-                    data: allProductSort,
-                    total: totalProduct,
-                    pageCurrent: Number(page + 1),
-                    totalPage: Math.ceil(totalProduct / limit)
-                })
-            }
-            if(!limit) {
-                allProduct = await Product.find().sort({createdAt: -1, updatedAt: -1})
-            }else {
-                allProduct = await Product.find().limit(limit).skip(page * limit).sort({createdAt: -1, updatedAt: -1})
-            }
-            resolve({
-                status: 'OK',
-                message: 'Success',
-                data: allProduct,
-                total: totalProduct,
-                pageCurrent: Number(page + 1),
-                totalPage: Math.ceil(totalProduct / limit)
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
+  return new Promise(async (resolve, reject) => {
+    try {
+      const query = {}
+
+      // SEARCH theo tên sản phẩm
+      if (filter) {
+        query.name = { $regex: filter, $options: 'i' }
+      }
+
+      // SORT
+      let sortQuery = { createdAt: -1 }
+      if (sort) {
+        sortQuery = { [sort[1]]: sort[0] }
+      }
+
+      const totalProduct = await Product.countDocuments(query)
+
+      const products = await Product.find(query)
+        .limit(limit)
+        .skip(page * limit)
+        .sort(sortQuery)
+
+      resolve({
+        status: 'OK',
+        message: 'Success',
+        data: products,
+        total: totalProduct,
+        pageCurrent: page + 1,
+        totalPage: limit ? Math.ceil(totalProduct / limit) : 1
+      })
+    } catch (e) {
+      reject(e)
+    }
+  })
 }
 
 const getAllType = () => {

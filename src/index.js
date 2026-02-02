@@ -24,7 +24,7 @@ app.use(cookieParser());
 routes(app);
 
 // Kết nối MongoDB
-mongoose.connect(`${process.env.MongoDB}`, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(`${process.env.Mongo_DB}`, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {
         console.log('Connect Db success!');
     })
