@@ -93,8 +93,16 @@ const deleteMany = async (req, res) => {
 
 const getAllProduct = async (req, res) => {
     try {
-        const { limit, page, sort, filter } = req.query
-        const response = await ProductService.getAllProduct(Number(limit) || null, Number(page) || 0, sort, filter)
+        const { limit, page, sort, filter, type } = req.query
+        const limitNumber = Number(limit) || 10
+        const pageNumber = Number(page) || 0
+        const response = await ProductService.getAllProduct(
+            limitNumber,
+            pageNumber,
+            sort,
+            filter,
+            type
+        )
         return res.status(200).json(response)
     } catch (e) {
         return res.status(404).json({
@@ -133,6 +141,33 @@ const rateProduct = async (req, res) => {
     }
 }
 
+const searchProduct = async (req, res) => {
+  try {
+    const { keyword, page = 0, limit = 10 } = req.query
+
+    const query = {
+      name: { $regex: keyword, $options: 'i' }
+    }
+
+    const total = await Product.countDocuments(query)
+
+    const products = await Product.find(query)
+      .limit(Number(limit))
+      .skip(Number(page) * Number(limit))
+
+    res.json({
+      status: 'OK',
+      message: 'Success',
+      data: products,
+      total,
+      pageCurrent: Number(page) + 1,
+      totalPage: Math.ceil(total / limit)
+    })
+  } catch (e) {
+    res.status(500).json({ status: 'ERR', message: e.message })
+  }
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -141,7 +176,8 @@ module.exports = {
     getAllProduct,
     deleteMany,
     getAllType,
-    rateProduct
+    rateProduct,
+    searchProduct
 }
 
 

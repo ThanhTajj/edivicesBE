@@ -123,17 +123,19 @@ const getDetailsProduct = (id) => {
     })
 }
 
-const getAllProduct = (limit, page, sort, filter) => {
+const getAllProduct = (limit, page, sort, filter, type) => {
   return new Promise(async (resolve, reject) => {
     try {
       const query = {}
 
-      // SEARCH theo tên sản phẩm
       if (filter) {
         query.name = { $regex: filter, $options: 'i' }
       }
 
-      // SORT
+      if (type) {
+        query.type = type
+      }
+
       let sortQuery = { createdAt: -1 }
       if (sort) {
         sortQuery = { [sort[1]]: sort[0] }
