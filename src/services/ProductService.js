@@ -1,64 +1,64 @@
 const Product = require("../models/ProductModel")
 
-const createProduct = (newProduct) => {
-    return new Promise(async (resolve, reject) => {
-        const { name, image, type, countInStock, price, rating, description,discount } = newProduct
-        try {
-            const checkProduct = await Product.findOne({
-                name: name
-            })
-            if (checkProduct !== null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The name of product is already'
-                })
-            }
-            const newProduct = await Product.create({
-                name, 
-                image, 
-                type, 
-                countInStock: Number(countInStock), 
-                price, 
-                rating, 
-                description,
-                discount: Number(discount),
-            })
-            if (newProduct) {
-                resolve({
-                    status: 'OK',
-                    message: 'SUCCESS',
-                    data: newProduct
-                })
-            }
-        } catch (e) {
-            reject(e)
-        }
-    })
+const normalizeType = (type) => {
+  if (!type) return type
+
+  const normalized = type
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
 
-const updateProduct = (id, data) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const checkProduct = await Product.findOne({
-                _id: id
-            })
-            if (checkProduct === null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The product is not defined'
-                })
-            }
+const createProduct = async (newProduct) => {
+  const { name, discount, type } = newProduct
 
-            const updatedProduct = await Product.findByIdAndUpdate(id, data, { new: true })
-            resolve({
-                status: 'OK',
-                message: 'SUCCESS',
-                data: updatedProduct
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
+  const checkProduct = await Product.findOne({ name })
+  if (checkProduct) {
+    return {
+      status: 'ERR',
+      message: 'The name of product is already'
+    }
+  }
+
+  const createdProduct = await Product.create({
+    ...newProduct,
+    type: normalizeType(type),
+    discount: Number(discount)
+  })
+
+  return {
+    status: 'OK',
+    message: 'SUCCESS',
+    data: createdProduct
+  }
+}
+
+const updateProduct = async (id, data) => {
+  const checkProduct = await Product.findById(id)
+  if (!checkProduct) {
+    return {
+      status: 'ERR',
+      message: 'The product is not defined'
+    }
+  }
+
+  if (data.type) {
+    data.type = normalizeType(data.type)
+  }
+
+  const updatedProduct = await Product.findByIdAndUpdate(
+    id,
+    data,
+    { new: true }
+  )
+
+  return {
+    status: 'OK',
+    message: 'SUCCESS',
+    data: updatedProduct
+  }
 }
 
 const deleteProduct = (id) => {
@@ -133,7 +133,7 @@ const getAllProduct = (limit, page, sort, filter, type) => {
       }
 
       if (type) {
-        query.type = type
+        query.type = normalizeType(type)
       }
 
       let sortQuery = { createdAt: -1 }
