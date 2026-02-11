@@ -73,7 +73,6 @@ const createOrder = (newOrder) => {
                 }
             }
         } catch (e) {
-            //   console.log('e', e)
             reject(e)
         }
     })
@@ -112,7 +111,6 @@ const getAllOrderDetails = (id) => {
                 data: order
             })
         } catch (e) {
-            // console.log('e', e)
             reject(e)
         }
     })
@@ -137,7 +135,6 @@ const getOrderDetails = (id) => {
                 data: order
             })
         } catch (e) {
-            // console.log('e', e)
             reject(e)
         }
     })
@@ -212,10 +209,41 @@ const getAllOrder = () => {
     })
 }
 
+const updateOrderStatus = async (id, data) => {
+  try {
+    const order = await Order.findById(id)
+    if (!order) {
+      return {
+        status: 'ERR',
+        message: 'Order not found'
+      }
+    }
+    if (data.isPaid !== undefined) {
+      order.isPaid = data.isPaid
+      order.paidAt = data.isPaid ? new Date() : null
+    }
+    if (data.isDelivered !== undefined) {
+      order.isDelivered = data.isDelivered
+      order.deliveredAt = data.isDelivered ? new Date() : null
+    }
+
+    await order.save()
+
+    return {
+      status: 'OK',
+      message: 'SUCCESS',
+      data: order
+    }
+  } catch (e) {
+    throw e
+  }
+}
+
 module.exports = {
     createOrder,
     getAllOrderDetails,
     getOrderDetails,
     cancelOrderDetails,
-    getAllOrder
+    getAllOrder,
+    updateOrderStatus
 }
