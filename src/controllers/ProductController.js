@@ -1,4 +1,5 @@
 const ProductService = require('../services/ProductService')
+const Product = require('../models/ProductModel')
 
 const createProduct = async (req, res) => {
     try {
@@ -131,22 +132,59 @@ const getAllType = async (req, res) => {
 }
 
 const rateProduct = async (req, res) => {
-    try {
-        const productId = req.params.id
-        const { rating } = req.body
-        if (!productId || !rating) {
-            return res.status(200).json({
-                status: 'ERR',
-                message: 'The input is required'
-            })
-        }
-        const response = await ProductService.updateProduct(productId, { rating })
-        return res.status(200).json(response)
-    } catch (e) {
-        return res.status(404).json({
-            message: e
-        })
+  try {
+    const userId = req.user.id
+    const productId = req.params.id
+    const { rating, comment } = req.body
+
+    const product = await Product.findById(productId)
+
+    if (!product) {
+      return res.status(404).json({
+        status: 'ERR',
+        message: 'Product not found'
+      })
     }
+
+    const existing = product.ratedUsers.find(
+        r => r.user.equals(userId)
+    )
+
+    if (existing) {
+      product.ratingSum = product.ratingSum - existing.rating + rating
+
+      existing.rating = rating
+      existing.comment = comment
+      existing.updatedAt = new Date()
+    } else {
+      product.ratedUsers.push({
+        user: userId,
+        rating,
+        comment
+      })
+
+      product.ratingSum += rating
+      product.ratingCount += 1
+    }
+
+    product.rating =
+      product.ratingCount === 0
+        ? 0
+        : product.ratingSum / product.ratingCount
+
+    await product.save()
+
+    return res.json({
+      status: 'OK',
+      message: 'Rated successfully'
+    })
+
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
 }
 
 const searchProduct = async (req, res) => {
@@ -176,6 +214,37 @@ const searchProduct = async (req, res) => {
   }
 }
 
+const deleteReview = async (req,res)=>{
+  const userId = req.user.id
+  const productId = req.params.id
+
+  const product = await Product.findById(productId)
+
+  const index = product.ratedUsers.findIndex(
+    r => r.user.equals(userId)
+  )
+
+  if(index === -1){
+      return res.json({status:'ERR', message:'Review not found'})
+  }
+
+  const removed = product.ratedUsers[index]
+
+  product.ratingSum -= removed.rating
+  product.ratingCount -= 1
+
+  product.ratedUsers.splice(index,1)
+
+  product.rating =
+    product.ratingCount === 0
+      ? 0
+      : product.ratingSum / product.ratingCount
+
+  await product.save()
+
+  res.json({status:'OK'})
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -185,7 +254,8 @@ module.exports = {
     deleteMany,
     getAllType,
     rateProduct,
-    searchProduct
+    searchProduct,
+    deleteReview
 }
 
 

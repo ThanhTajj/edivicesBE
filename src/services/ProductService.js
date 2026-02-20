@@ -100,27 +100,30 @@ const deleteManyProduct = (ids) => {
 }
 
 const getDetailsProduct = (id) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const product = await Product.findOne({
-                _id: id
-            })
-            if (product === null) {
-                resolve({
-                    status: 'ERR',
-                    message: 'The product is not defined'
-                })
-            }
-
-            resolve({
-                status: 'OK',
-                message: 'SUCESS',
-                data: product
-            })
-        } catch (e) {
-            reject(e)
-        }
-    })
+  return new Promise(async (resolve, reject) => {
+    try {
+      const product = await Product.findById(id)
+        .populate('ratedUsers.user', 'name avatar')
+      if (!product) {
+        return resolve({
+          status: 'ERR',
+          message: 'The product is not defined'
+        })
+      }
+      product.ratedUsers.sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt) -
+          new Date(a.updatedAt || a.createdAt)
+      )
+      resolve({
+        status: 'OK',
+        message: 'SUCCESS',
+        data: product
+      })
+    } catch (e) {
+      reject(e)
+    }
+  })
 }
 
 const getAllProduct = (limit, page, sort, filter, type) => {
