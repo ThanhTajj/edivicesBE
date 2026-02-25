@@ -12,26 +12,47 @@ const normalizeType = (type) => {
 }
 
 const createProduct = async (newProduct) => {
-  const { name, discount, type } = newProduct
+  try {
+    const { name, discount, type } = newProduct
 
-  const checkProduct = await Product.findOne({ name })
-  if (checkProduct) {
+    if (!name) {
+      return {
+        status: 'ERR',
+        message: 'Name is required'
+      }
+    }
+
+    const normalizedName = name.trim()
+
+    const checkProduct = await Product.findOne({
+      name: { $regex: `^${normalizedName}$`, $options: 'i' }
+    })
+
+    if (checkProduct) {
+      return {
+        status: 'ERR',
+        message: 'Sản phẩm đã tồn tại'
+      }
+    }
+
+    const createdProduct = await Product.create({
+      ...newProduct,
+      name: normalizedName,
+      type: normalizeType(type),
+      discount: Number(discount)
+    })
+
+    return {
+      status: 'OK',
+      message: 'SUCCESS',
+      data: createdProduct
+    }
+
+  } catch (error) {
     return {
       status: 'ERR',
-      message: 'The name of product is already'
+      message: error.message
     }
-  }
-
-  const createdProduct = await Product.create({
-    ...newProduct,
-    type: normalizeType(type),
-    discount: Number(discount)
-  })
-
-  return {
-    status: 'OK',
-    message: 'SUCCESS',
-    data: createdProduct
   }
 }
 

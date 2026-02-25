@@ -1,4 +1,0 @@
-PORT=3001
-MONGO_DB=mongodb+srv://thanhta:g7kiFzwhQeKGjGVD@cluster0.umqlyxq.mongodb.net/?appName=Cluster0
-ACCESS_TOKEN=access_token
-REFRESH_TOKEN=refresh_token

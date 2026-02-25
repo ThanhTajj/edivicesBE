@@ -1,6 +1,5 @@
 const Order = require("../models/OrderProduct")
 const Product = require("../models/ProductModel")
-const EmailService = require("../services/EmailService")
 
 const createOrder = (newOrder) => {
     return new Promise(async (resolve, reject) => {
@@ -61,11 +60,6 @@ const createOrder = (newOrder) => {
                     isPaid, paidAt
                 })
                 if (createdOrder) {
-                    try {
-                        await EmailService.sendEmailCreateOrder(email, orderItems)
-                    } catch (emailError) {
-                        console.log('EmailService error:', emailError)
-                    }
                     resolve({
                         status: 'OK',
                         message: 'success'
@@ -78,30 +72,16 @@ const createOrder = (newOrder) => {
     })
 }
 
-// const deleteManyProduct = (ids) => {
-//     return new Promise(async (resolve, reject) => {
-//         try {
-//             await Product.deleteMany({ _id: ids })
-//             resolve({
-//                 status: 'OK',
-//                 message: 'Delete product success',
-//             })
-//         } catch (e) {
-//             reject(e)
-//         }
-//     })
-// }
-
 const getAllOrderDetails = (id) => {
     return new Promise(async (resolve, reject) => {
         try {
             const order = await Order.find({
                 user: id
             }).sort({ createdAt: -1, updatedAt: -1 })
-            if (order === null) {
-                resolve({
+            if (!order || order.length === 0) {
+                return resolve({
                     status: 'ERR',
-                    message: 'The order is not defined'
+                    message: 'No orders found'
                 })
             }
 
@@ -122,10 +102,10 @@ const getOrderDetails = (id) => {
             const order = await Order.findById({
                 _id: id
             })
-            if (order === null) {
-                resolve({
+            if (!order) {
+                return resolve({
                     status: 'ERR',
-                    message: 'The order is not defined'
+                    message: 'Order not found'
                 })
             }
 
@@ -140,58 +120,44 @@ const getOrderDetails = (id) => {
     })
 }
 
-const cancelOrderDetails = (id, data) => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let order = []
-            const promises = data.map(async (order) => {
-                const productData = await Product.findOneAndUpdate(
-                    {
-                        _id: order.product,
-                        selled: { $gte: order.amount }
-                    },
-                    {
-                        $inc: {
-                            countInStock: +order.amount,
-                            selled: -order.amount
-                        }
-                    },
-                    { new: true }
-                )
-                if (productData) {
-                    order = await Order.findByIdAndDelete(id)
-                    if (order === null) {
-                        resolve({
-                            status: 'ERR',
-                            message: 'The order is not defined'
-                        })
-                    }
-                } else {
-                    return {
-                        status: 'OK',
-                        message: 'ERR',
-                        id: order.product
-                    }
-                }
-            })
-            const results = await Promise.all(promises)
-            const newData = results && results[0] && results[0].id
-
-            if (newData) {
-                resolve({
-                    status: 'ERR',
-                    message: `San pham voi id: ${newData} khong ton tai`
-                })
-            }
-            resolve({
-                status: 'OK',
-                message: 'success',
-                data: order
-            })
-        } catch (e) {
-            reject(e)
+const cancelOrderDetails = async (orderId, orderItems) => {
+  try {
+    const order = await Order.findById(orderId)
+    if (!order) {
+      return {
+        status: 'ERR',
+        message: 'Đơn hàng không tồn tại'
+      }
+    }
+    if (order.status === 'DELIVERED') {
+        return {
+            status: 'ERR',
+            message: 'Đơn hàng đã giao, không thể hủy'
         }
+    }
+    const promises = orderItems.map(async (item) => {
+      await Product.findByIdAndUpdate(
+        item.product,
+        {
+          $inc: {
+            countInStock: item.amount,
+            selled: -item.amount
+          }
+        }
+      )
     })
+    await Promise.all(promises)
+    order.status = 'CANCELLED'
+    order.cancelAt = new Date()
+    await order.save()
+    return {
+      status: 'OK',
+      message: 'Hủy đơn thành công',
+      data: order
+    }
+  } catch (e) {
+    throw e
+  }
 }
 
 const getAllOrder = () => {
@@ -210,28 +176,66 @@ const getAllOrder = () => {
 }
 
 const updateOrderStatus = async (id, data) => {
-  try {
-    const order = await Order.findById(id)
+    try {
+        const order = await Order.findById(id)
     if (!order) {
-      return {
-        status: 'ERR',
-        message: 'Order not found'
-      }
+        return {
+            status: 'ERR',
+            message: 'Order not found'
+        }
     }
     if (data.isPaid !== undefined) {
-      order.isPaid = data.isPaid
-      order.paidAt = data.isPaid ? new Date() : null
+        order.isPaid = data.isPaid
+        order.paidAt = data.isPaid ? new Date() : null
     }
-    if (data.isDelivered !== undefined) {
-      order.isDelivered = data.isDelivered
-      order.deliveredAt = data.isDelivered ? new Date() : null
+    if (data.status) {
+        order.status = data.status
+        if (data.status === 'DELIVERED') {
+            order.deliveredAt = new Date()
+        }
+        if (data.status === 'CANCELLED') {
+            order.cancelAt = new Date()
+        }
     }
+    await order.save()
+    return {
+        status: 'OK',
+        message: 'SUCCESS',
+        data: order
+    }
+        } catch (e) {
+            throw e
+        }
+    }
+
+const refundOrder = async (orderId) => {
+  try {
+    const order = await Order.findById(orderId)
+    if (!order) {
+      return { status: 'ERR', message: 'Không tìm thấy đơn hàng' }
+    }
+
+    if (order.status === 'REFUNDED') {
+      return { status: 'ERR', message: 'Đơn đã được hoàn tiền' }
+    }
+
+    if (!order.isPaid) {
+      return { status: 'ERR', message: 'Đơn chưa thanh toán' }
+    }
+
+    if (order.status !== 'CANCELLED') {
+      return { status: 'ERR', message: 'Chỉ hoàn tiền khi đơn đã hủy' }
+    }
+
+    order.status = 'REFUNDED'
+    order.isPaid = false
+    order.refundedAt = new Date()
 
     await order.save()
 
     return {
       status: 'OK',
-      message: 'SUCCESS',
+      message: 'Hoàn tiền thành công',
       data: order
     }
   } catch (e) {
@@ -245,5 +249,6 @@ module.exports = {
     getOrderDetails,
     cancelOrderDetails,
     getAllOrder,
-    updateOrderStatus
+    updateOrderStatus,
+    refundOrder
 }

@@ -22,8 +22,22 @@ const createUser = async (req, res) => {
                 message: 'The password is equal confirmPassword'
             })
         }
-        const response = await UserService.createUser(req.body)
-        return res.status(200).json(response)
+        await UserService.createUser(req.body)
+        const response = await UserService.loginUser({
+            email,
+            password
+        })
+        const { refresh_token, ...newResponse } = response
+        res.cookie('refresh_token', refresh_token, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'strict',
+            path: '/',
+        })
+        return res.status(200).json({
+            ...newResponse,
+            refresh_token
+        })
     } catch (e) {
         return res.status(404).json({
             message: e
@@ -180,6 +194,7 @@ const logoutUser = async (req, res) => {
         })
     }
 }
+
 module.exports = {
     createUser,
     loginUser,
