@@ -214,25 +214,19 @@ const refundOrder = async (orderId) => {
     if (!order) {
       return { status: 'ERR', message: 'Không tìm thấy đơn hàng' }
     }
-
-    if (order.status === 'REFUNDED') {
+    if (order.refunded) {
       return { status: 'ERR', message: 'Đơn đã được hoàn tiền' }
     }
-
     if (!order.isPaid) {
       return { status: 'ERR', message: 'Đơn chưa thanh toán' }
     }
-
     if (order.status !== 'CANCELLED') {
       return { status: 'ERR', message: 'Chỉ hoàn tiền khi đơn đã hủy' }
     }
-
-    order.status = 'REFUNDED'
-    order.isPaid = false
+    order.refunded = true
     order.refundedAt = new Date()
-
+    order.isPaid = false
     await order.save()
-
     return {
       status: 'OK',
       message: 'Hoàn tiền thành công',
