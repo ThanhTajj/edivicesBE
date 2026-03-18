@@ -1,5 +1,7 @@
 const ProductService = require('../services/ProductService')
 const Product = require('../models/ProductModel')
+const ProductType = require('../models/ProductTypeModel')
+const Setting = require('../models/SettingModel')
 
 const createProduct = async (req, res) => {
     try {
@@ -245,6 +247,136 @@ const deleteReview = async (req,res)=>{
   res.json({status:'OK'})
 }
 
+const createProductType = async (req, res) => {
+  try {
+    const response = await ProductService.createProductType(req.body)
+    return res.status(200).json(response)
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
+}
+
+const getAllTypeProduct = async (req, res) => {
+  try {
+    const { sort } = req.query
+
+    let sortQuery = { order: 1 }
+
+    switch (sort) {
+      case 'manual':
+        sortQuery = { order: 1, type: 1 }
+        break
+      case 'newest':
+        sortQuery = { createdAt: -1 }
+        break
+      case 'oldest':
+        sortQuery = { createdAt: 1 }
+        break
+      case 'az':
+        sortQuery = { type: 1 }
+        break
+      case 'za':
+        sortQuery = { type: -1 }
+        break
+      default:
+        sortQuery = { order: 1, type: 1 }
+    }
+
+    const types = await ProductType.find()
+      .sort(sortQuery)
+      .collation({ locale: 'vi', strength: 1 })
+
+    return res.json({
+      status: 'OK',
+      data: types
+    })
+
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
+}
+
+const updateProductType = async (req, res) => {
+  try {
+    const id = req.params.id
+    const updated = await ProductType.findByIdAndUpdate(
+      id,
+      req.body,
+      { new: true }
+    )
+    return res.json({
+      status: 'OK',
+      data: updated
+    })
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
+}
+
+const deleteProductType = async (req,res) => {
+  const id = req.params.id
+
+  const productCount = await Product.countDocuments({ type:id })
+
+  if(productCount > 0){
+    return res.status(400).json({
+      status:"ERR",
+      message:"Type đang được sử dụng"
+    })
+  }
+
+  await ProductType.findByIdAndDelete(id)
+
+  return res.json({
+    status:"OK",
+    message:"Delete success"
+  })
+}
+
+const updateTypeSortSetting = async (req, res) => {
+  try {
+    const { value } = req.body
+
+    await Setting.findOneAndUpdate(
+      { key: 'typeSort' },
+      { value },
+      { upsert: true, new: true }
+    )
+
+    return res.json({ status: 'OK' })
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
+}
+
+const getTypeSortSetting = async (req, res) => {
+  try {
+    const setting = await Setting.findOne({ key: 'typeSort' })
+
+    return res.json({
+      status: 'OK',
+      value: setting?.value || 'manual'
+    })
+  } catch (e) {
+    return res.status(500).json({
+      status: 'ERR',
+      message: e.message
+    })
+  }
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -253,9 +385,15 @@ module.exports = {
     getAllProduct,
     deleteMany,
     getAllType,
+    createProductType,
     rateProduct,
     searchProduct,
-    deleteReview
+    deleteReview,
+    getAllTypeProduct,
+    deleteProductType,
+    updateProductType,
+    updateTypeSortSetting,
+    getTypeSortSetting
 }
 
 

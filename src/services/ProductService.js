@@ -1,4 +1,5 @@
 const Product = require("../models/ProductModel")
+const ProductType = require('../models/ProductTypeModel')
 
 const normalizeType = (type) => {
   if (!type) return type
@@ -35,10 +36,18 @@ const createProduct = async (newProduct) => {
       }
     }
 
+    const normalizedType = normalizeType(type)
+
+    let typeDoc = await ProductType.findOne({ type: normalizedType })
+
+    if (!typeDoc) {
+      typeDoc = await ProductType.create({ type: normalizedType })
+    }
+
     const createdProduct = await Product.create({
       ...newProduct,
       name: normalizedName,
-      type: normalizeType(type),
+      type: typeDoc._id,
       discount: Number(discount)
     })
 
@@ -63,10 +72,6 @@ const updateProduct = async (id, data) => {
       status: 'ERR',
       message: 'The product is not defined'
     }
-  }
-
-  if (data.type) {
-    data.type = normalizeType(data.type)
   }
 
   const updatedProduct = await Product.findByIdAndUpdate(
@@ -124,6 +129,7 @@ const getDetailsProduct = (id) => {
   return new Promise(async (resolve, reject) => {
     try {
       const product = await Product.findById(id)
+        .populate('type', 'type')
         .populate('ratedUsers.user', 'name avatar')
       if (!product) {
         return resolve({
@@ -157,7 +163,15 @@ const getAllProduct = (limit, page, sort, filter, type) => {
       }
 
       if (type) {
-        query.type = normalizeType(type)
+        const normalizedType = normalizeType(type)
+
+        const typeDoc = await ProductType.findOne({
+          type: normalizedType
+        })
+
+        if (typeDoc) {
+          query.type = typeDoc._id
+        }
       }
 
       let sortQuery = { createdAt: -1 }
@@ -167,9 +181,12 @@ const getAllProduct = (limit, page, sort, filter, type) => {
 
       const totalProduct = await Product.countDocuments(query)
 
+      const skip = page ? page * limit : 0
+
       const products = await Product.find(query)
+        .populate('type', 'type')
         .limit(limit)
-        .skip(page * limit)
+        .skip(skip)
         .sort(sortQuery)
 
       resolve({
@@ -189,7 +206,7 @@ const getAllProduct = (limit, page, sort, filter, type) => {
 const getAllType = () => {
     return new Promise(async (resolve, reject) => {
         try {
-            const allType = await Product.distinct('type')
+            const allType = await ProductType.find().select('type')
             resolve({
                 status: 'OK',
                 message: 'Success',
@@ -201,6 +218,47 @@ const getAllType = () => {
     })
 }
 
+const createProductType = async (data) => {
+  try {
+    const { type } = data
+    const normalizedType = normalizeType(type)
+
+    const lastType = await ProductType.findOne().sort({ order: -1 })
+
+    const newOrder = lastType ? lastType.order + 1 : 1
+
+    const newType = await ProductType.create({
+      type: normalizedType,
+      order: newOrder
+    })
+
+    return {
+      status: 'OK',
+      data: newType
+    }
+  } catch (e) {
+    return {
+      status: 'ERR',
+      message: e.message
+    }
+  }
+}
+
+const getAllTypeProduct = async () => {
+  try {
+    const types = await ProductType.find().sort({ order: 1 })
+    return {
+      status: 'OK',
+      data: types
+    }
+  } catch (e) {
+    return {
+      status: 'ERR',
+      message: e.message
+    }
+  }
+}
+
 module.exports = {
     createProduct,
     updateProduct,
@@ -208,5 +266,7 @@ module.exports = {
     deleteProduct,
     getAllProduct,
     deleteManyProduct,
-    getAllType
+    getAllType,
+    createProductType,
+    getAllTypeProduct
 }
