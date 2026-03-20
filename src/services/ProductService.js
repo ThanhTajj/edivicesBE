@@ -66,24 +66,42 @@ const createProduct = async (newProduct) => {
 }
 
 const updateProduct = async (id, data) => {
-  const checkProduct = await Product.findById(id)
-  if (!checkProduct) {
-    return {
-      status: 'ERR',
-      message: 'The product is not defined'
+  try {
+    const checkProduct = await Product.findById(id)
+    if (!checkProduct) {
+      return {
+        status: 'ERR',
+        message: 'The product is not defined'
+      }
     }
-  }
 
-  const updatedProduct = await Product.findByIdAndUpdate(
-    id,
-    data,
-    { new: true }
-  )
+    if (data.type) {
+      const isObjectId = /^[a-f\d]{24}$/i.test(String(data.type))
+      if (!isObjectId) {
+        // type được gửi dưới dạng tên chuỗi, cần tra cứu hoặc tạo mới
+        const normalizedType = normalizeType(data.type)
+        let typeDoc = await ProductType.findOne({ type: normalizedType })
+        if (!typeDoc) {
+          typeDoc = await ProductType.create({ type: normalizedType })
+        }
+        data.type = typeDoc._id
+      }
+      // Nếu là ObjectId rồi thì giữ nguyên, không làm gì thêm
+    }
 
-  return {
-    status: 'OK',
-    message: 'SUCCESS',
-    data: updatedProduct
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      data,
+      { new: true }
+    )
+
+    return {
+      status: 'OK',
+      message: 'SUCCESS',
+      data: updatedProduct
+    }
+  } catch (err) {
+    throw err
   }
 }
 
