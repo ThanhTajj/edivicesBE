@@ -2,6 +2,7 @@ const ProductService = require('../services/ProductService')
 const Product = require('../models/ProductModel')
 const ProductType = require('../models/ProductTypeModel')
 const Setting = require('../models/SettingModel')
+const Order = require('../models/OrderProduct')
 
 const createProduct = async (req, res) => {
     try {
@@ -138,6 +139,20 @@ const rateProduct = async (req, res) => {
     const userId = req.user.id
     const productId = req.params.id
     const { rating, comment } = req.body
+
+    // Kiểm tra user đã mua và nhận hàng chưa
+    const deliveredOrder = await Order.findOne({
+      user: userId,
+      status: 'DELIVERED',
+      'orderItems.product': productId
+    })
+
+    if (!deliveredOrder) {
+      return res.json({
+        status: 'ERR',
+        message: 'Bạn cần mua và nhận hàng thành công để đánh giá sản phẩm này'
+      })
+    }
 
     const product = await Product.findById(productId)
 
@@ -325,14 +340,7 @@ const updateProductType = async (req, res) => {
 const deleteProductType = async (req,res) => {
   const id = req.params.id
 
-  const productCount = await Product.countDocuments({ type:id })
-
-  if(productCount > 0){
-    return res.status(400).json({
-      status:"ERR",
-      message:"Type đang được sử dụng"
-    })
-  }
+  await Product.deleteMany({ type: id })
 
   await ProductType.findByIdAndDelete(id)
 
@@ -340,6 +348,32 @@ const deleteProductType = async (req,res) => {
     status:"OK",
     message:"Delete success"
   })
+}
+
+const deleteManyType = async (req, res) => {
+  try {
+    const ids = req.body.ids
+    if (!ids) {
+      return res.status(200).json({
+        status: 'ERR',
+        message: 'The ids is required'
+      })
+    }
+
+    await Product.deleteMany({ type: { $in: ids } })
+
+    await ProductType.deleteMany({ _id: { $in: ids } })
+
+    return res.json({
+      status: "OK",
+      message: "Delete success"
+    })
+  } catch (e) {
+    return res.status(500).json({
+      status: "ERR",
+      message: e.message
+    })
+  }
 }
 
 const updateTypeSortSetting = async (req, res) => {
@@ -391,6 +425,7 @@ module.exports = {
     deleteReview,
     getAllTypeProduct,
     deleteProductType,
+    deleteManyType,
     updateProductType,
     updateTypeSortSetting,
     getTypeSortSetting

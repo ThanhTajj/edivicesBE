@@ -6,19 +6,17 @@ const createOrder = (newOrder) => {
         const { orderItems, paymentMethod, itemsPrice, shippingPrice, totalPrice, fullName, address, city, phone, user, isPaid, paidAt, email } = newOrder
         try {
             const promises = orderItems.map(async (order) => {
-                const productData = await Product.findOneAndUpdate(
+                const productData = await Product.findOne(
                     {
                         _id: order.product,
                         countInStock: { $gte: order.amount }
-                    },
-                    {
-                        $inc: {
-                            countInStock: -order.amount,
-                            selled: +order.amount
-                        }
-                    },
-                    { new: true }
+                    }
                 )
+                if (productData && isPaid) {
+                    await Product.findByIdAndUpdate(order.product, {
+                        $inc: { countInStock: -order.amount, selled: +order.amount }
+                    })
+                }
                 if (productData) {
                     return {
                         status: 'OK',
@@ -135,18 +133,20 @@ const cancelOrderDetails = async (orderId, orderItems) => {
             message: 'Đơn hàng đã giao, không thể hủy'
         }
     }
-    const promises = orderItems.map(async (item) => {
-      await Product.findByIdAndUpdate(
-        item.product,
-        {
-          $inc: {
-            countInStock: item.amount,
-            selled: -item.amount
+    if (order.isPaid) {
+      const promises = orderItems.map(async (item) => {
+        await Product.findByIdAndUpdate(
+          item.product,
+          {
+            $inc: {
+              countInStock: item.amount,
+              selled: -item.amount
+            }
           }
-        }
-      )
-    })
-    await Promise.all(promises)
+        )
+      })
+      await Promise.all(promises)
+    }
     order.status = 'CANCELLED'
     order.cancelAt = new Date()
     await order.save()
@@ -184,9 +184,23 @@ const updateOrderStatus = async (id, data) => {
             message: 'Order not found'
         }
     }
+    let isBecomingPaid = (data.isPaid === true && order.isPaid === false);
+
     if (data.isPaid !== undefined) {
         order.isPaid = data.isPaid
         order.paidAt = data.isPaid ? new Date() : null
+    }
+
+    if (isBecomingPaid && order.orderItems) {
+        const promises = order.orderItems.map(async (item) => {
+            await Product.findByIdAndUpdate(
+                item.product,
+                {
+                    $inc: { countInStock: -item.amount, selled: +item.amount }
+                }
+            );
+        });
+        await Promise.all(promises);
     }
     if (data.status) {
         order.status = data.status

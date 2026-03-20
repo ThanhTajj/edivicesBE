@@ -116,7 +116,7 @@ const refundOrder = async (req, res) => {
     const orderId = req.params.id
 
     if (!orderId) {
-      return res.status(400).json({
+      return res.status(200).json({
         status: 'ERR',
         message: 'The orderId is required'
       })

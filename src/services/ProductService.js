@@ -174,7 +174,7 @@ const getAllProduct = (limit, page, sort, filter, type) => {
         }
       }
 
-      let sortQuery = { createdAt: -1 }
+      let sortQuery = { createdAt: 1 }
       if (sort) {
         sortQuery = { [sort[1]]: sort[0] }
       }
